@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # Docker Compose creates a virtual network between the services and the DNS name 
+  # used for each service is its name: that’s why it’s possible to use registry-discovery as the hostname.
+  registry-discovery:
+    container_name: id-eureka
+    image: ms-eureka-server_image:latest
+    ports:
+      - "8761:8761"
+    environment:
+      JAVA_OPTS: "-Xms256M -Xmx256M"
+    networks:
+      - my_network
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "root"
+      POSTGRES_DB: "fwksynopsis"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - my_network
+
+  # Keycloak Server
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak_server
+    environment:
+      #KC_HOSTNAME: keycloak
+      #KC_HOSTNAME_STRICT: false
+      DB_VENDOR: H2
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    command: ["start-dev"]
+    ports:
+      - "8091:8080"
+    networks:
+      - my_network
+
+  # Configuration service
+  config-server:
+    container_name: config-server
+    image: ms-config-server_image:latest
+    volumes:
+      # Use a local GitHub repository
+      - ./config-server-repo:/tmp/config-server-repo
+    environment:
+      JAVA_OPTS: "-Xms256M -Xmx256M -DREPOSITORY_PATH=/tmp/config-server-repo -DEUREKA_SERVER=http://registry-discovery:8761/eureka/"
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s       # Intervalo entre cada verificación
+      timeout: 5s         # Tiempo máximo para considerar una respuesta
+      retries: 5          # Intentos antes de marcar como "unhealthy"
+      start_period: 30s   # Tiempo inicial para esperar antes de empezar a verificar
+
+    depends_on:
+      - registry-discovery
+    networks:
+      - my_network
+
+  ms-product:
+    container_name: ms-product
+    hostname: ms-product
+    image: ms-product_image:latest
+    environment:
+      JAVA_OPTS: "-Xms256M -Xmx256M -DPOSTGRES_SERVER=jdbc:postgresql://postgres:5432/fwksynopsis -DEUREKA_SERVER=http://registry-discovery:8761/eureka/ -DCONFIG_SERVER=configserver:http://config-server:8888"
+    ports:
+      - "8081:8081"
+    networks:
+      - my_network
+
+  ms-transactions:
+    container_name: ms-transactions
+    image: ms-transactions_image:latest
+    environment:
+      JAVA_OPTS: "-Xms256M -Xmx256M -DPOSTGRES_SERVER=jdbc:postgresql://postgres:5432/fwksynopsis -DEUREKA_SERVER=http://registry-discovery:8761/eureka/ -DCONFIG_SERVER=configserver:http://config-server:8888"
+    ports:
+      - "8083:8083"
+    networks:
+      - my_network
+
+  ms-customer:
+    container_name: ms-customer
+    image: ms-customer_image:latest
+    environment:
+      JAVA_OPTS: "-Xms256M -Xmx256M -DPOSTGRES_SERVER=jdbc:postgresql://postgres:5432/fwksynopsis -DEUREKA_SERVER=http://registry-discovery:8761/eureka/ -DCONFIG_SERVER=configserver:http://config-server:8888"
+    ports:
+      - "8082:8082"
+    networks:
+      - my_network
+  
+  ms-ventas:
+    container_name: ms-ventas
+    image: ms-ventas_image:latest
+    environment:
+      JAVA_OPTS: "-Xms256M -Xmx256M -DPOSTGRES_SERVER=jdbc:postgresql://postgres:5432/fwksynopsis -DEUREKA_SERVER=http://registry-discovery:8761/eureka/ -DCONFIG_SERVER=configserver:http://config-server:8888"
+    ports:
+      - "8084:8084"
+    networks:
+      - my_network
+    volumes:
+      - ./logs:/logs
+
+  ms-keycloack-adapter:
+    container_name: ms-keycloack-adapter
+    image: ms-keycloack-adapter_image:latest
+    environment:
+      JAVA_OPTS: "-Xms256M -Xmx256M -DKEYCLOACK_SERVER=http://keycloak:8080/realms/ -DEUREKA_SERVER=http://registry-discovery:8761/eureka/"
+    ports:
+      - "8089:8088"
+    networks:
+      - my_network
+
+  ms-api-gateway:
+    container_name: ms-api-gateway
+    image: ms-api-gateway_image:latest
+    environment:
+      JAVA_OPTS: "-Xms256M -Xmx256M  -DEUREKA_SERVER=http://registry-discovery:8761/eureka/"
+    ports:
+      - "8080:8080"
+    networks:
+      - my_network
+volumes:
+  postgres_data:
+
+networks:
+  my_network:
+    driver: bridge

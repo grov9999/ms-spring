@@ -1,0 +1,7 @@
+{
+    "editor.fontLigatures": true,
+    "editor.fontFamily": "'Cascadia Code',Consolas, 'Courier New', monospace",
+    "java.compile.nullAnalysis.mode": "disabled",
+    "editor.guides.bracketPairs": true,
+    "editor.guides.bracketPairsHorizontal": "active"
+}

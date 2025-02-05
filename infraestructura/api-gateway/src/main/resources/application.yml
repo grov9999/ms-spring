@@ -1,0 +1,96 @@
+server:
+  port: 8080
+ 
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty.http.client: DEBUG
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_SERVER:http://registry-discovery:8761/eureka/}
+    register-with-eureka: true
+    healthcheck:
+      enabled:  false
+    fetch-registry: true
+spring:
+  cloud:
+    gateway:
+      routes:
+        ## PRODUCT ##
+        - id: ms-product-insertar
+          uri: lb://ms-product
+          predicates:
+            - Path=/ms-product/v1/product/insertar
+            - Method=POST
+          filters:
+            - name: AuthenticationFiltering
+          
+        - id: ms-product-listar
+          uri: lb://ms-product
+          predicates:
+            - Path=/ms-product/v1/product/listar
+            - Method=GET
+          filters:
+            - name: AuthenticationFiltering
+
+        ## TRANSACTIONS ##
+        - id: ms-transactions-buscar
+          uri: lb://ms-transactions
+          predicates:
+            - Path=/ms-transactions/v1/transactions/buscar/**
+            - Method=GET
+          filters:
+            - name: AuthenticationFiltering
+          
+        - id: ms-transactions-listar
+          uri: lb://ms-transactions
+          predicates:
+            - Path=/ms-transactions/v1/transactions/listar
+            - Method=GET
+          filters:
+            - name: AuthenticationFiltering
+
+
+        ## CUSTOMER ##
+        - id: ms-customer-buscar
+          uri: lb://ms-customer
+          predicates:
+            - Path=/ms-customer/v1/customer/buscar/**
+            - Method=GET
+          filters:
+            - name: AuthenticationFiltering
+          
+        - id: ms-customer-listar
+          uri: lb://ms-customer
+          predicates:
+            - Path=/ms-customer/v1/customer/listar
+            - Method=GET
+          filters:
+            - name: AuthenticationFiltering
+        
+        - id: ms-customer-listar2
+          uri: lb://ms-customer
+          predicates:
+            - Path=/ms-customer/v1/customer/listar2/**
+            - Method=GET
+          filters:
+            - name: AuthenticationFiltering
+
+        ## VENTAS ##
+        - id: ms-ventas-listar
+          uri: lb://ms-ventas
+          predicates:
+            - Path=/ms-ventas/v1/ventas/listar
+            - Method=GET
+
+        - id: ms-ventas-insertar
+          uri: lb://ms-ventas
+          predicates:
+            - Path=/ms-ventas/v1/ventas/insertar
+            - Method=POST
+          filters:
+            - name: AuthenticationFiltering
+  application:
+    name: api-gateway
